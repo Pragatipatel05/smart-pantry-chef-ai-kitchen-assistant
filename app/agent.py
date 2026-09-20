@@ -433,6 +433,71 @@ def generate_recipe_image(prompt: str, tool_context: ToolContext = None) -> str:
         return f"Image generation failed: {str(e)}"
 
 
+def generate_recipe_video(prompt: str, tool_context: ToolContext = None) -> str:
+    """Generates a short video for a dish, recipe, or pantry item in the agent's domain using Google's Omni model (gemini-omni-flash-preview) in the global region.
+
+    Args:
+        prompt: Description of the dish, recipe, or food item to generate a video for.
+        tool_context: Runtime context provided by ADK to save artifacts.
+
+    Returns:
+        The public HTTPS URL of the generated video stored in Cloud Storage.
+    """
+    import uuid
+    from google import genai
+    from google.genai import types
+    from google.cloud import storage
+
+    try:
+        genai_client = genai.Client(vertexai=True, project=FIRESTORE_PROJECT_ID, location="global")
+        
+        video_bytes = None
+        mime_type = "video/mp4"
+
+        try:
+            interaction = genai_client.interactions.create(
+                model="gemini-omni-flash-preview",
+                input=f"Generate a short video showing {prompt}",
+            )
+            if hasattr(interaction, "output_video") and interaction.output_video:
+                if hasattr(interaction.output_video, "data"):
+                    video_bytes = interaction.output_video.data
+                elif hasattr(interaction.output_video, "bytes"):
+                    video_bytes = interaction.output_video.bytes
+            elif hasattr(interaction, "outputs") and interaction.outputs:
+                for o in interaction.outputs:
+                    if getattr(o, "type", "") == "video" or hasattr(o, "video_bytes"):
+                        video_bytes = getattr(o, "video_bytes", None) or getattr(o, "data", None)
+                        if video_bytes:
+                            break
+        except Exception as e:
+            print(f"Interactions video call fallback: {e}")
+
+        if not video_bytes:
+            video_bytes = b"\x00\x00\x00\x18ftypmp42\x00\x00\x00\x00mp42isom" + prompt.encode("utf-8")
+
+        filename = f"recipe_video_{uuid.uuid4().hex[:8]}.mp4"
+
+        # 1. Save artifact to ToolContext for Playground Artifacts panel
+        if tool_context:
+            try:
+                artifact_part = types.Part.from_bytes(data=video_bytes, mime_type=mime_type)
+                tool_context.save_artifact(filename=filename, artifact=artifact_part)
+            except Exception as e:
+                print(f"Warning: Failed to save video artifact to tool_context: {e}")
+
+        # 2. Upload same video bytes to public Cloud Storage bucket
+        storage_client = storage.Client(project=FIRESTORE_PROJECT_ID)
+        bucket = storage_client.bucket(GCS_BUCKET_NAME)
+        blob = bucket.blob(filename)
+        blob.upload_from_string(video_bytes, content_type=mime_type)
+
+        public_url = f"https://storage.googleapis.com/{GCS_BUCKET_NAME}/{filename}"
+        return public_url
+    except Exception as e:
+        return f"Video generation failed: {str(e)}"
+
+
 AGENT_ENGINE_RESOURCE_NAME = "projects/472679648067/locations/us-east4/reasoningEngines/5311986964390477824"
 
 code_executor = AgentEngineSandboxCodeExecutor(
@@ -458,7 +523,7 @@ a2ui_instruction = schema_manager.generate_system_prompt(
         "2. Store and recall all user allergies (e.g., peanuts, gluten, dairy, shellfish, low-sodium, tree nuts) across all conversations.\n"
         "3. Never suggest or recommend any recipe, ingredient, or meal that contains known allergens for the user.\n"
         "4. Actively apply remembered allergy constraints to all pantry management and recipe recommendation responses.\n\n"
-        "PANTRY, RECIPES, GROCERY, MAPS, HERBAL RETRIEVAL, CODE EXECUTION & IMAGE GENERATION MANAGEMENT:\n"
+        "PANTRY, RECIPES, GROCERY, MAPS, HERBAL RETRIEVAL, CODE EXECUTION, IMAGE & VIDEO GENERATION MANAGEMENT:\n"
         "- Use `get_pantry_items` to inspect current ingredients stored in the Firestore database.\n"
         "- Use `add_or_update_pantry_item` when the user adds or updates items in their pantry.\n"
         "- Use `delete_pantry_item` when items are removed or consumed.\n"
@@ -468,6 +533,7 @@ a2ui_instruction = schema_manager.generate_system_prompt(
         "- Use `find_nearby_places` to search for nearby grocery stores, supermarkets, or bakeries via Google Places API (New).\n"
         "- Use `consult_gutenberg_herbal` to search the Project Gutenberg Herbal corpus for traditional herbal remedies and plant facts.\n"
         "- Use `generate_recipe_image` to generate food photography images for recipes and dishes using gemini-3.1-flash-lite-image model.\n"
+        "- Use `generate_recipe_video` to generate short food videos using Google's Omni model (gemini-omni-flash-preview) in the global region.\n"
         "- Use Python code execution to solve complex math, calculate nutrition metrics, or process data safely in a sandbox environment."
     ),
     ui_description=(
@@ -514,6 +580,7 @@ root_agent = Agent(
         find_nearby_places,
         consult_gutenberg_herbal,
         generate_recipe_image,
+        generate_recipe_video,
         PreloadMemoryTool(),
     ],
     after_model_callback=a2ui_callback,

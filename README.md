@@ -26,9 +26,9 @@ Built using Google's Agent Development Kit (ADK) and deployed to Vertex AI Agent
 ### 📚 Herbal Knowledge Retrieval (Vertex AI RAG Engine)
 - **RAG Retrieval:** Grounded retrieval on a Project Gutenberg herbal corpus (`consult_gutenberg_herbal`) using serverless Vertex AI RAG Engine.
 
-### 📸 AI Food Image Generation & Public Cloud Storage
-- **Imagen Visuals:** Generates food photography for dishes using the `gemini-3.1-flash-lite-image` model (`generate_recipe_image`).
-- **Public GCS Hosting:** Saves artifacts to `ToolContext` and uploads image bytes to a public Google Cloud Storage bucket for web rendering.
+### 📸 AI Food Image & Video Generation & Public Cloud Storage
+- **Imagen & Omni Visuals:** Generates food photography images using `gemini-3.1-flash-lite-image` (`generate_recipe_image`) and short culinary videos using Google's Omni model (`gemini-omni-flash-preview` in global region via `generate_recipe_video`).
+- **Public GCS Hosting:** Saves artifacts to `ToolContext` and uploads image/video bytes to a public Google Cloud Storage bucket for web rendering.
 
 ### 🧮 Agent Platform Code Execution
 - **Python Sandbox:** Safely executes Python code (`AgentEngineSandboxCodeExecutor`) in an isolated sandbox to compute total calories, macro splits, and ingredient conversions.
