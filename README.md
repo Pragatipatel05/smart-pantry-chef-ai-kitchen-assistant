@@ -1,4 +1,4 @@
-# 🥗 Smart Pantry Chef Agent
+# Smart Pantry Chef — Your AI Kitchen Assistant
 
 An intelligent, conversational AI assistant designed for home cooks to manage pantry inventory, discover real online recipes, calculate nutritional macros, find nearby grocery stores, consult traditional herbal remedies, and generate dish visuals.
 
