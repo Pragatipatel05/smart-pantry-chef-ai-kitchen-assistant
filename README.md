@@ -4,6 +4,8 @@ An intelligent, conversational AI assistant designed for home cooks to manage pa
 
 Built using Google's Agent Development Kit (ADK) and deployed to Vertex AI Agent Runtime with a custom FastAPI chat interface.
 
+![Smart Pantry Chef Demo](demo.gif)
+
 ---
 
 ## 🌟 Key Features & Tool Capabilities
